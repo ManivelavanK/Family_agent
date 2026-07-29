@@ -3,6 +3,69 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserCircle, Users, Baby, Calendar, CheckCircle2, ShieldAlert, ChevronRight, Image as ImageIcon } from 'lucide-react';
 
+interface KinshipHandTransitionProps {
+  isNavigating: boolean;
+  onComplete?: () => void;
+}
+
+export const KinshipHandTransitionOverlay: React.FC<KinshipHandTransitionProps> = ({
+  isNavigating,
+  onComplete,
+}) => {
+  return (
+    <AnimatePresence onExitComplete={onComplete}>
+      {isNavigating && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-amber-950/60 backdrop-blur-3xl overflow-hidden pointer-events-none"
+        >
+          {/* Ambient Background Warmth */}
+          <div className="absolute w-[600px] h-[600px] rounded-full bg-amber-500/15 blur-[120px] animate-pulse" />
+
+          <div className="relative w-full max-w-2xl aspect-square flex items-center justify-center">
+            
+            {/* 1. TOP-LEFT & BOTTOM-RIGHT GOLDEN HANDS (Sliding into clasp) */}
+            <motion.div
+              className="absolute inset-0 flex items-center justify-center"
+              initial={{ scale: 1.3, opacity: 0, y: -40 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {/* Central Glowing Joined Hands Emblem */}
+              <div className="relative w-96 h-96">
+                <img
+                  src="/assets/golden-hands-joined.png" 
+                  alt="Kinship Hands Joining"
+                  className="w-full h-full object-contain drop-shadow-[0_0_35px_rgba(251,191,36,0.7)]"
+                />
+              </div>
+            </motion.div>
+
+            {/* 2. BURST OF HEARTH LIGHT ON CONNECTION */}
+            <motion.div
+              className="absolute w-48 h-48 rounded-full bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-100 blur-2xl"
+              initial={{ scale: 0.2, opacity: 0 }}
+              animate={{ scale: [0.2, 2.2, 3], opacity: [0, 0.9, 0] }}
+              transition={{ duration: 0.8, delay: 0.7, ease: "easeOut" }}
+            />
+
+            {/* 3. CONCENTRIC KINSHIP RIPPLES */}
+            <motion.div
+              className="absolute w-80 h-80 rounded-full border border-amber-400/50"
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1.8, opacity: [0, 0.6, 0] }}
+              transition={{ duration: 1, delay: 0.6, ease: "easeOut" }}
+            />
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 const AgentCard = ({ agent }: { agent: any }) => {
   const Icon = agent.icon;
 
@@ -61,7 +124,7 @@ export default function Landing() {
       setIsNavigating(true);
       setTimeout(() => {
         navigate('/workspace');
-      }, 1200); // Wait for transition animation
+      }, 1400); // Wait for transition animation
     }, 300); // Wait for button pulse
   };
 
@@ -197,195 +260,7 @@ export default function Landing() {
 
   return (
     <div ref={containerRef} className="min-h-screen relative flex flex-col items-center justify-start pb-32">
-      <AnimatePresence>
-        {isNavigating && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none bg-amber-950/20 backdrop-blur-2xl overflow-hidden"
-            transition={{ duration: 0.5 }}
-          >
-            {/* Drifting Motes */}
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2, duration: 1 }}
-              className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(251,191,36,0.15)_0%,_transparent_70%)]"
-            >
-              {Array.from({ length: 20 }).map((_, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ 
-                    x: `${Math.random() * 100}vw`, 
-                    y: `${Math.random() * 100}vh`, 
-                    opacity: 0, 
-                    scale: Math.random() * 0.5 + 0.5 
-                  }}
-                  animate={{ 
-                    y: [`${Math.random() * 100}vh`, `${Math.random() * 100 - 20}vh`],
-                    opacity: [0, 0.6, 0]
-                  }}
-                  transition={{ 
-                    duration: Math.random() * 3 + 2, 
-                    repeat: Infinity, 
-                    delay: Math.random() * 2,
-                    ease: "linear" 
-                  }}
-                  className="absolute w-2 h-2 rounded-full bg-amber-200 blur-[2px]"
-                />
-              ))}
-            </motion.div>
-
-            {/* Peripheral Ripples */}
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: [0.8, 1.5, 2], opacity: [0, 0.3, 0] }}
-              transition={{ delay: 0.7, duration: 2, ease: "easeOut" }}
-              className="absolute w-[80vw] h-[80vw] rounded-full border border-teal-500/20 mix-blend-screen"
-            />
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: [0.8, 1.2, 1.8], opacity: [0, 0.4, 0] }}
-              transition={{ delay: 0.9, duration: 2, ease: "easeOut" }}
-              className="absolute w-[60vw] h-[60vw] rounded-full border border-amber-500/20 mix-blend-screen"
-            />
-
-            {/* SVG Converging Light-Hands (The Kinship Handshake) */}
-            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid slice">
-              <defs>
-                <linearGradient id="goldGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="transparent" />
-                  <stop offset="60%" stopColor="#fde047" />
-                  <stop offset="100%" stopColor="#fffbeb" />
-                </linearGradient>
-                <linearGradient id="sageGlow" x1="100%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="transparent" />
-                  <stop offset="60%" stopColor="#6ee7b7" />
-                  <stop offset="100%" stopColor="#ecfdf5" />
-                </linearGradient>
-                <linearGradient id="goldGlowBottom" x1="100%" y1="100%" x2="0%" y2="0%">
-                  <stop offset="0%" stopColor="transparent" />
-                  <stop offset="60%" stopColor="#fde047" />
-                  <stop offset="100%" stopColor="#fffbeb" />
-                </linearGradient>
-                <linearGradient id="sageGlowBottom" x1="0%" y1="100%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="transparent" />
-                  <stop offset="60%" stopColor="#6ee7b7" />
-                  <stop offset="100%" stopColor="#ecfdf5" />
-                </linearGradient>
-                <filter id="etherealGlow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="4" result="blur1" />
-                  <feGaussianBlur stdDeviation="12" result="blur2" />
-                  <feMerge>
-                    <feMergeNode in="blur2" />
-                    <feMergeNode in="blur1" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
-
-              <g filter="url(#etherealGlow)">
-                {/* TOP LEFT HAND (Gold) */}
-                <motion.g 
-                  initial={{ x: -100, y: -100, opacity: 0 }}
-                  animate={{ x: 0, y: 0, opacity: 1 }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                >
-                  <path d="M 20%,10% Q 35%,30% 45%,42% Q 48%,46% 50%,47%" fill="none" stroke="url(#goldGlow)" strokeWidth="3" strokeLinecap="round" />
-                  <path d="M 15%,15% Q 30%,35% 42%,45% Q 46%,48% 49%,49%" fill="none" stroke="url(#goldGlow)" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
-                  <path d="M 25%,5%  Q 40%,25% 47%,40% Q 49%,45% 51%,46%" fill="none" stroke="url(#goldGlow)" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
-                  {/* Fingers */}
-                  <path d="M 45%,42% Q 48%,46% 50%,47% Q 51%,47% 52%,49%" fill="none" stroke="url(#goldGlow)" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M 42%,45% Q 46%,48% 49%,49% Q 51%,50% 51%,52%" fill="none" stroke="url(#goldGlow)" strokeWidth="1.5" strokeLinecap="round" />
-                </motion.g>
-
-                {/* BOTTOM RIGHT HAND (Gold) */}
-                <motion.g 
-                  initial={{ x: 100, y: 100, opacity: 0 }}
-                  animate={{ x: 0, y: 0, opacity: 1 }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                >
-                  <path d="M 80%,90% Q 65%,70% 55%,58% Q 52%,54% 50%,53%" fill="none" stroke="url(#goldGlowBottom)" strokeWidth="3" strokeLinecap="round" />
-                  <path d="M 85%,85% Q 70%,65% 58%,55% Q 54%,52% 51%,51%" fill="none" stroke="url(#goldGlowBottom)" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
-                  <path d="M 75%,95% Q 60%,75% 53%,60% Q 51%,55% 49%,54%" fill="none" stroke="url(#goldGlowBottom)" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
-                  {/* Fingers */}
-                  <path d="M 55%,58% Q 52%,54% 50%,53% Q 49%,53% 48%,51%" fill="none" stroke="url(#goldGlowBottom)" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M 58%,55% Q 54%,52% 51%,51% Q 49%,50% 49%,48%" fill="none" stroke="url(#goldGlowBottom)" strokeWidth="1.5" strokeLinecap="round" />
-                </motion.g>
-
-                {/* TOP RIGHT HAND (Sage) */}
-                <motion.g 
-                  initial={{ x: 100, y: -100, opacity: 0 }}
-                  animate={{ x: 0, y: 0, opacity: 1 }}
-                  transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
-                >
-                  <path d="M 80%,10% Q 65%,30% 55%,42% Q 52%,46% 50%,47%" fill="none" stroke="url(#sageGlow)" strokeWidth="3" strokeLinecap="round" />
-                  <path d="M 85%,15% Q 70%,35% 58%,45% Q 54%,48% 51%,49%" fill="none" stroke="url(#sageGlow)" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
-                  <path d="M 75%,5%  Q 60%,25% 53%,40% Q 51%,45% 49%,46%" fill="none" stroke="url(#sageGlow)" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
-                  {/* Fingers */}
-                  <path d="M 55%,42% Q 52%,46% 50%,47% Q 49%,47% 48%,49%" fill="none" stroke="url(#sageGlow)" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M 58%,45% Q 54%,48% 51%,49% Q 49%,50% 49%,52%" fill="none" stroke="url(#sageGlow)" strokeWidth="1.5" strokeLinecap="round" />
-                </motion.g>
-
-                {/* BOTTOM LEFT HAND (Sage) */}
-                <motion.g 
-                  initial={{ x: -100, y: 100, opacity: 0 }}
-                  animate={{ x: 0, y: 0, opacity: 1 }}
-                  transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
-                >
-                  <path d="M 20%,90% Q 35%,70% 45%,58% Q 48%,54% 50%,53%" fill="none" stroke="url(#sageGlowBottom)" strokeWidth="3" strokeLinecap="round" />
-                  <path d="M 15%,85% Q 30%,65% 42%,55% Q 46%,52% 49%,51%" fill="none" stroke="url(#sageGlowBottom)" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
-                  <path d="M 25%,95% Q 40%,75% 47%,60% Q 49%,55% 51%,54%" fill="none" stroke="url(#sageGlowBottom)" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
-                  {/* Fingers */}
-                  <path d="M 45%,58% Q 48%,54% 50%,53% Q 51%,53% 52%,51%" fill="none" stroke="url(#sageGlowBottom)" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M 42%,55% Q 46%,52% 49%,51% Q 51%,50% 51%,48%" fill="none" stroke="url(#sageGlowBottom)" strokeWidth="1.5" strokeLinecap="round" />
-                </motion.g>
-              </g>
-
-              {/* Relationship Motes and Nest Embrace */}
-              <g>
-                <motion.circle cx="50%" cy="50%" r="55" fill="none" stroke="#fde047" strokeWidth="2" strokeDasharray="1 10" strokeLinecap="round"
-                  initial={{ scale: 0.5, opacity: 0, rotate: -45 }}
-                  animate={{ scale: 1, opacity: 0.8, rotate: 135 }}
-                  transition={{ delay: 0.7, duration: 1.5, ease: "backOut" }}
-                />
-                <motion.circle cx="50%" cy="50%" r="75" fill="none" stroke="#6ee7b7" strokeWidth="1.5" strokeDasharray="3 15" strokeLinecap="round"
-                  initial={{ scale: 0.5, opacity: 0, rotate: 45 }}
-                  animate={{ scale: 1, opacity: 0.5, rotate: -90 }}
-                  transition={{ delay: 0.8, duration: 1.5, ease: "backOut" }}
-                />
-                
-                {/* The "Nest" Embrace Rings */}
-                <motion.ellipse cx="50%" cy="50%" rx="90" ry="110" fill="none" stroke="url(#goldGlow)" strokeWidth="1" opacity="0.4"
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 0.4 }}
-                  transition={{ delay: 0.9, duration: 1 }}
-                />
-                <motion.ellipse cx="50%" cy="50%" rx="110" ry="90" fill="none" stroke="url(#sageGlow)" strokeWidth="1" opacity="0.4"
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 0.4 }}
-                  transition={{ delay: 1.0, duration: 1 }}
-                />
-              </g>
-            </svg>
-            
-            {/* The Clasp Burst */}
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ 
-                scale: [0, 2.5, 1.5], 
-                opacity: [0, 1, 0]
-              }}
-              transition={{ delay: 0.7, duration: 0.8, ease: "easeOut" }}
-              className="absolute w-32 h-32 flex items-center justify-center pointer-events-none"
-            >
-              {/* Brilliant Central Core */}
-              <div className="w-10 h-10 bg-white rounded-full shadow-[0_0_80px_40px_rgba(253,224,71,1)] mix-blend-screen"></div>
-              {/* Diffuse aura */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-amber-200/50 to-emerald-200/50 rounded-full blur-2xl"></div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <KinshipHandTransitionOverlay isNavigating={isNavigating} />
 
       {/* Hero Section - Perfectly Centered Full Viewport Height block */}
       <div className="relative z-20 flex flex-col items-center justify-center min-h-[90vh] text-center px-6 max-w-5xl mx-auto w-full">
