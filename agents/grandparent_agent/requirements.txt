@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+python-dotenv
+apscheduler
+groq
+scikit-learn
+pandas
+numpy
+joblib
+psycopg2-binary
+edge-tts
+python-multipart
+reportlab
