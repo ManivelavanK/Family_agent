@@ -32,8 +32,8 @@ from backend.scheduler import scheduler, scheduler_worker
 from backend.scheduler.models import ScheduledTask
 
 # Import the Authentication and Workspace Manager components
-from backend.auth import get_current_user, require_roles, verify_context_scope, get_user, register_user
-from backend.auth.models import RegisterRequest, LoginRequest, TokenResponse, UserClaims
+from backend.auth import get_current_user, require_roles, verify_context_scope, get_user, register_user, create_workspace, join_workspace
+from backend.auth.models import RegisterRequest, LoginRequest, TokenResponse, UserClaims, CreateWorkspaceRequest, JoinWorkspaceRequest, WorkspaceResponse
 from backend.auth.jwt import create_access_token, verify_password, hash_password, decode_access_token
 
 # Configure logger
@@ -229,26 +229,77 @@ app.add_middleware(
 
 @app.post("/orchestrator/auth/register", response_model=TokenResponse, tags=["Family Workspace Auth"])
 def register_workspace_user(req: RegisterRequest):
-    """Registers a new user and binds them to a family partition workspace, returning a valid JWT token."""
+    """Backward-compatible registration: binds a user to a family partition workspace and returns a JWT token."""
     existing = get_user(req.username)
     if existing:
         raise HTTPException(status_code=400, detail="Username already registered.")
-        
-    hashed = hash_password(req.password)
-    user = register_user(req.username, hashed, req.role, req.family_id)
-    
-    token = create_access_token({"sub": user["username"], "role": user["role"], "family_id": user["family_id"]})
-    return {"access_token": token, "token_type": "bearer"}
+    try:
+        hashed = hash_password(req.password)
+        user = register_user(req.username, hashed, req.role, req.family_id)
+        token = create_access_token({"sub": user["username"], "role": user["role"], "family_id": user["family_id"]})
+        return {"access_token": token, "token_type": "bearer", "family_id": user["family_id"], "role": user["role"], "username": user["username"]}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/orchestrator/auth/login", response_model=TokenResponse, tags=["Family Workspace Auth"])
 def login_workspace_user(req: LoginRequest):
-    """Authenticates credentials against the partitioned workspace DB and returns a JWT access token."""
+    """Authenticates credentials (username OR email) and returns a JWT access token with family claims."""
     user = get_user(req.username)
     if not user or not verify_password(req.password, user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid username or password.")
-        
     token = create_access_token({"sub": user["username"], "role": user["role"], "family_id": user["family_id"]})
-    return {"access_token": token, "token_type": "bearer"}
+    return {"access_token": token, "token_type": "bearer", "family_id": user["family_id"], "role": user["role"], "username": user["username"]}
+
+@app.post("/orchestrator/auth/workspace/create", response_model=WorkspaceResponse, tags=["Family Workspace Auth"])
+def create_family_workspace(req: CreateWorkspaceRequest):
+    """Creates a new family workspace with a unique join code and registers the creator as a Parent admin."""
+    existing = get_user(req.admin_username)
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Username '{req.admin_username}' is already taken.")
+    try:
+        hashed = hash_password(req.admin_password)
+        result = create_workspace(
+            family_name=req.family_name,
+            house_address=req.house_address,
+            admin_username=req.admin_username,
+            hashed_pw=hashed
+        )
+        token = create_access_token({"sub": result["username"], "role": result["role"], "family_id": result["family_id"]})
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "family_id": result["family_id"],
+            "family_name": result["family_name"],
+            "join_code": result["join_code"],
+            "role": result["role"],
+            "username": result["username"]
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/orchestrator/auth/workspace/join", response_model=WorkspaceResponse, tags=["Family Workspace Auth"])
+def join_family_workspace(req: JoinWorkspaceRequest):
+    """Joins an existing family workspace using the join code, registering as a new member with specified role."""
+    try:
+        hashed = hash_password(req.password)
+        result = join_workspace(
+            join_code=req.join_code,
+            username=req.username,
+            hashed_pw=hashed,
+            role=req.role
+        )
+        token = create_access_token({"sub": result["username"], "role": result["role"], "family_id": result["family_id"]})
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "family_id": result["family_id"],
+            "family_name": result["family_name"],
+            "join_code": result["join_code"],
+            "role": result["role"],
+            "username": result["username"]
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 # ── Registry API Endpoints ──────────────────────────────────────────────────
 
