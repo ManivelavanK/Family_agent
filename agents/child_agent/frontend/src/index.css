@@ -1,0 +1,188 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+
+@import "tailwindcss";
+
+/* ─── Custom theme config for Tailwind v4 ──────────── */
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+
+  --color-navy-dark:  #0B1F33;
+  --color-navy-med:   #102A43;
+  --color-navy-light: #1E3A5F;
+  --color-brand-indigo: #6366F1;
+  --color-brand-purple: #7C3AED;
+  --color-brand-gold:   #D4A72C;
+
+  --shadow-glow:    0 0 20px rgba(99,102,241,0.4);
+  --shadow-glow-lg: 0 0 40px rgba(99,102,241,0.3);
+  --shadow-card:    0 2px 12px rgba(17,24,39,0.06);
+  --shadow-card-hover: 0 8px 28px rgba(99,102,241,0.14);
+
+  --animate-float:        float 4s ease-in-out infinite;
+  --animate-pulse-soft:   pulse-soft 2.5s ease-in-out infinite;
+  --animate-spin-slow:    spin-slow 8s linear infinite;
+  --animate-shimmer:      shimmer 1.5s infinite;
+  --animate-fade-in:      fade-in 0.4s ease-out;
+  --animate-scale-in:     scale-in 0.3s ease-out;
+
+  @keyframes float       { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+  @keyframes pulse-soft  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(1.06)} }
+  @keyframes spin-slow   { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+  @keyframes shimmer     { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  @keyframes fade-in     { 0%{opacity:0;transform:translateY(10px)} 100%{opacity:1;transform:translateY(0)} }
+  @keyframes scale-in    { 0%{opacity:0;transform:scale(0.94)} 100%{opacity:1;transform:scale(1)} }
+}
+
+/* ─── Design Token Vars ────────────────────────────── */
+:root {
+  --bg:      #F7F9FC;
+  --surface: #FFFFFF;
+  --text:    #172B4D;
+  --border:  #D9E2EC;
+}
+
+/* ─── Base ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: rgba(99,102,241,0.2); }
+
+/* ─── Scrollbars ─────────────────────────────────────── */
+::-webkit-scrollbar          { width: 5px; height: 5px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: var(--border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #b0bec5; }
+
+/* ─── Shimmer ────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── Utility Classes ────────────────────────────────── */
+.glass {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  border: 1px solid rgba(217,226,236,0.6);
+  box-shadow: 0 2px 12px rgba(17,24,39,0.06);
+}
+
+.glass-dark {
+  background: rgba(11,31,51,0.90);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(99,102,241,0.18);
+}
+
+.gradient-indigo-purple {
+  background: linear-gradient(135deg, #6366F1 0%, #7C3AED 100%);
+}
+
+.gradient-navy {
+  background: linear-gradient(135deg, #0B1F33 0%, #102A43 100%);
+}
+
+.card-hover {
+  transition: all 0.18s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(99,102,241,0.12);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #e8edf2 25%, #f0f4f8 50%, #e8edf2 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+.orb-glow {
+  box-shadow: 0 0 20px rgba(99,102,241,0.5),
+              0 0 40px rgba(124,58,237,0.3),
+              inset 0 0 20px rgba(255,255,255,0.1);
+}
+
+.input-base {
+  width: 100%;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+  transition: all 0.15s;
+}
+.input-base:focus {
+  border-color: #6366F1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  color: white;
+  background: linear-gradient(135deg, #6366F1 0%, #7C3AED 100%);
+  box-shadow: 0 4px 14px rgba(99,102,241,0.3);
+  transition: all 0.15s;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  user-select: none;
+}
+.btn-primary:hover:not(:disabled) { opacity: 0.93; transform: translateY(-1px); }
+.btn-primary:active                { transform: translateY(0); }
+.btn-primary:disabled              { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: white;
+  transition: all 0.15s;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-ghost:hover {
+  background: var(--bg);
+  border-color: #6366F1;
+  color: #6366F1;
+}
+
+/* Pills */
+.pill-indigo { display:inline-flex;align-items:center;padding:2px 10px;border-radius:9999px;font-size:11px;font-weight:700;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe; }
+.pill-purple  { display:inline-flex;align-items:center;padding:2px 10px;border-radius:9999px;font-size:11px;font-weight:700;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe; }
+.pill-gold    { display:inline-flex;align-items:center;padding:2px 10px;border-radius:9999px;font-size:11px;font-weight:700;background:#fffbeb;color:#b45309;border:1px solid #fde68a; }
+.pill-green   { display:inline-flex;align-items:center;padding:2px 10px;border-radius:9999px;font-size:11px;font-weight:700;background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7; }
+.pill-red     { display:inline-flex;align-items:center;padding:2px 10px;border-radius:9999px;font-size:11px;font-weight:700;background:#fff1f2;color:#be123c;border:1px solid #fecdd3; }
+
+.section-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.025em; color: #0B1F33; display:flex;align-items:center; }
+.section-sub   { font-size: 0.875rem; color: #64748b; margin-top: 4px; font-weight: 500; }
+
+/* Sidebar offset utility */
+@media (min-width: 1024px) {
+  .lg\:pl-\[260px\] { padding-left: 260px; }
+}

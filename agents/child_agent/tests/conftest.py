@@ -1,0 +1,22 @@
+# Ensure all models are imported so SQLAlchemy registers them on Base.metadata
+import app.models.student
+import app.models.digital_twin
+import app.models.attendance
+import app.models.subject
+import app.models.assignment
+import app.models.study_session
+import app.models.goal
+import app.models.exam
+import app.models.progress
+import app.models.notification
+import app.models.memory
+import app.models.profile
+import app.models.study
+import app.models.screen_time
+import app.models.health
+import app.models.activity
+import app.models.pocket_money
+import app.models.safety
+import app.models.nutrition
+import app.models.schedule
+import app.models.homework

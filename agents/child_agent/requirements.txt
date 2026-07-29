@@ -1,0 +1,21 @@
+# Core Web Framework
+fastapi>=0.110.0
+uvicorn>=0.28.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+
+# Database
+SQLAlchemy>=2.0.0
+python-dotenv>=1.0.0
+psycopg2-binary>=2.9.0
+
+# Scheduling & Utilities
+APScheduler>=3.10.0
+
+# Machine Learning & Data Science
+numpy>=1.26.0
+pandas>=2.2.0
+scikit-learn>=1.4.0
+
+# Agentic AI
+groq>=0.5.0
