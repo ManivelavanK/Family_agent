@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dotlottie/react-player": "^1.6.19",
+    "@lottiefiles/dotlottie-react": "^0.19.12",
     "axios": "^1.19.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.43.0",
