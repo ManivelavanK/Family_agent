@@ -53,6 +53,7 @@ from app.api.reports import router as reports_router
 from app.api.settings import router as settings_router
 from app.api.voice import router as voice_router
 from app.api.kitchen_assistant import router as kitchen_assistant_router
+from app.api.mother_api import router as mother_api_router
 
 
 
@@ -108,6 +109,7 @@ for router in [
     shopping_router, planning_router, reflection_router, ml_router, agent_bus_router,
     alerts_router, analytics_router, dashboard_router, vault_router,
     reports_router, settings_router, voice_router, kitchen_assistant_router,
+    mother_api_router,
 ]:
     app.include_router(router)
 

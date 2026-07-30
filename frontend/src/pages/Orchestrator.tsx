@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Network } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
+import { orchestratorApi } from '../api/orchestratorApi';
 
 export default function Orchestrator() {
   const token = useAuthStore(state => state.token);
@@ -13,12 +14,12 @@ export default function Orchestrator() {
 
     const fetchData = async () => {
       try {
-        const [agentsRes, tasksRes] = await Promise.all([
-          fetch('http://localhost:8000/orchestrator/agents', { headers: { Authorization: `Bearer ${token}` } }),
-          fetch('http://localhost:8000/orchestrator/tasks', { headers: { Authorization: `Bearer ${token}` } })
+        const [agentsData, tasksData] = await Promise.all([
+          orchestratorApi.getAgents(),
+          orchestratorApi.getTasks()
         ]);
-        if (agentsRes.ok) setAgents(await agentsRes.json());
-        if (tasksRes.ok) setTasks(await tasksRes.json());
+        setAgents(agentsData);
+        setTasks(tasksData);
       } catch (err) {
         console.error('Polling error:', err);
       }
@@ -31,7 +32,7 @@ export default function Orchestrator() {
 
   // Helper to determine if an agent is online
   const isOnline = (agentName: string) => {
-    const agent = agents.find((a: any) => a.name === agentName);
+    const agent = agents.find((a: any) => a.name?.toLowerCase() === agentName.toLowerCase());
     return agent && agent.status === 'ONLINE';
   };
   return (

@@ -22,19 +22,23 @@ Base = declarative_base()
 class FamilyWorkspace(Base):
     __tablename__ = "family_workspaces"
 
-    join_code   = Column(String(20), primary_key=True, index=True)
-    family_name = Column(String(100), nullable=False)
-    house_address = Column(Text, nullable=True)
-    created_at  = Column(DateTime, default=datetime.utcnow)
+    join_code           = Column(String(20), primary_key=True, index=True)
+    family_name         = Column(String(100), nullable=False)
+    house_address       = Column(Text, nullable=True)
+    member_count        = Column(String(10), nullable=True)
+    children_ages       = Column(Text, nullable=True)        # comma-separated ages
+    special_needs       = Column(Text, nullable=True)
+    family_password_hash= Column(String(256), nullable=True) # shared family password
+    created_at          = Column(DateTime, default=datetime.utcnow)
 
 class WorkspaceUser(Base):
     __tablename__ = "workspace_users"
 
-    username        = Column(String(50), primary_key=True, index=True)
+    username        = Column(String(120), primary_key=True, index=True)  # email used as username
     email           = Column(String(120), nullable=True, index=True)
     hashed_password = Column(String(256), nullable=False)
-    role            = Column(String(30), nullable=False, default="Parent")
-    family_id       = Column(String(20), nullable=False)   # References join_code
+    role            = Column(String(30), nullable=False, default="Pending")
+    family_id       = Column(String(20), nullable=True)      # NULL until connected to a family
     created_at      = Column(DateTime, default=datetime.utcnow)
 
 def create_all_tables():
@@ -68,7 +72,11 @@ ROLE_CONTEXT_ACCESS: Dict[str, Dict[str, str]] = {
     "baby": {
         "profile": "READ", "shopping": "NONE", "budget": "NONE", "health": "READ",
         "child": "NONE", "baby": "READ", "planner": "NONE"
-    }
+    },
+    "pending": {
+        "profile": "NONE", "shopping": "NONE", "budget": "NONE", "health": "NONE",
+        "child": "NONE", "baby": "NONE", "planner": "NONE"
+    },
 }
 
 def has_context_permission(role: str, category: str, action: str) -> bool:
@@ -94,13 +102,63 @@ def _generate_join_code() -> str:
     code = "KIN-" + "".join(random.choices(chars, k=5))
     return code
 
-# ── Workspace Operations ─────────────────────────────────────────────────────
+# ── Basic User Registration (step 1: email + password, no role yet) ──────────
 
-def create_workspace(family_name: str, house_address: str, admin_username: str, hashed_pw: str) -> dict:
-    """Creates a new family workspace and registers the creator as a Parent (admin)."""
+def register_basic_user(email: str, hashed_pw: str) -> dict:
+    """Registers a new user with just email + password. No role or family assigned yet."""
     db: Session = SessionLocal()
     try:
-        # Generate a unique join code
+        email_lower = email.lower().strip()
+        existing = db.query(WorkspaceUser).filter(
+            (WorkspaceUser.username == email_lower) | (WorkspaceUser.email == email_lower)
+        ).first()
+        if existing:
+            raise ValueError("An account with this email already exists.")
+        user = WorkspaceUser(
+            username=email_lower,
+            email=email_lower,
+            hashed_password=hashed_pw,
+            role="Pending",
+            family_id=None
+        )
+        db.add(user)
+        db.commit()
+        logger.info(f"Registered new user: {email_lower}")
+        return {"username": email_lower, "email": email_lower, "role": "Pending", "family_id": None}
+    except ValueError:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error registering user: {e}")
+        raise
+    finally:
+        db.close()
+
+# ── Family Setup (step 2: creator sets up family + family password) ───────────
+
+def setup_family_workspace(
+    creator_email: str,
+    role: str,
+    family_name: str,
+    house_address: str,
+    member_count: str,
+    children_ages: str,
+    special_needs: str,
+    family_password_hash: str
+) -> dict:
+    """Creator sets up a family workspace and is assigned their chosen role."""
+    db: Session = SessionLocal()
+    try:
+        email_lower = creator_email.lower().strip()
+        user = db.query(WorkspaceUser).filter(
+            (WorkspaceUser.username == email_lower) | (WorkspaceUser.email == email_lower)
+        ).first()
+        if not user:
+            raise ValueError("User account not found. Please register first.")
+        if user.family_id:
+            raise ValueError("You are already connected to a family workspace.")
+
+        # Generate unique join code
         join_code = _generate_join_code()
         while db.query(FamilyWorkspace).filter_by(join_code=join_code).first():
             join_code = _generate_join_code()
@@ -108,120 +166,161 @@ def create_workspace(family_name: str, house_address: str, admin_username: str, 
         workspace = FamilyWorkspace(
             join_code=join_code,
             family_name=family_name,
-            house_address=house_address
+            house_address=house_address,
+            member_count=member_count,
+            children_ages=children_ages,
+            special_needs=special_needs,
+            family_password_hash=family_password_hash
         )
         db.add(workspace)
 
-        user = WorkspaceUser(
-            username=admin_username,
-            hashed_password=hashed_pw,
-            role="Parent",
-            family_id=join_code
-        )
-        db.add(user)
+        # Assign role and family to the creator
+        user.role = role
+        user.family_id = join_code
         db.commit()
 
-        logger.info(f"Created workspace '{family_name}' with join code {join_code}.")
+        logger.info(f"Family '{family_name}' set up by {email_lower} as {role}. Join code: {join_code}")
         return {
-            "join_code": join_code,
-            "family_name": family_name,
-            "username": admin_username,
-            "role": "Parent",
-            "family_id": join_code
-        }
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Error creating workspace: {e}")
-        raise
-    finally:
-        db.close()
-
-def join_workspace(join_code: str, username: str, hashed_pw: str, role: str) -> dict:
-    """Joins an existing family workspace using the join code. Validates the workspace exists."""
-    db: Session = SessionLocal()
-    try:
-        workspace = db.query(FamilyWorkspace).filter_by(join_code=join_code.upper()).first()
-        if not workspace:
-            raise ValueError(f"No workspace found with join code '{join_code}'. Please check the code.")
-
-        existing = db.query(WorkspaceUser).filter_by(username=username).first()
-        if existing:
-            raise ValueError(f"Username '{username}' is already registered.")
-
-        user = WorkspaceUser(
-            username=username,
-            hashed_password=hashed_pw,
-            role=role,
-            family_id=join_code.upper()
-        )
-        db.add(user)
-        db.commit()
-
-        logger.info(f"User '{username}' joined workspace '{workspace.family_name}' as {role}.")
-        return {
-            "join_code": join_code.upper(),
-            "family_name": workspace.family_name,
-            "username": username,
+            "username": user.username,
+            "email": user.email,
             "role": role,
-            "family_id": join_code.upper()
+            "family_id": join_code,
+            "family_name": family_name,
+            "join_code": join_code
         }
     except ValueError:
         raise
     except Exception as e:
         db.rollback()
-        logger.error(f"Error joining workspace: {e}")
+        logger.error(f"Error setting up family workspace: {e}")
         raise
     finally:
         db.close()
 
+# ── Family Connect (step 2 alt: member joins using family password + role) ────
+
+def connect_to_family(email: str, role: str, family_password: str) -> dict:
+    """Connects an existing user to a family workspace using the shared family password."""
+    db: Session = SessionLocal()
+    try:
+        from backend.auth.jwt import verify_password as vp
+        email_lower = email.lower().strip()
+        user = db.query(WorkspaceUser).filter(
+            (WorkspaceUser.username == email_lower) | (WorkspaceUser.email == email_lower)
+        ).first()
+        if not user:
+            raise ValueError("User account not found. Please register first.")
+        if user.family_id:
+            raise ValueError("You are already connected to a family workspace.")
+
+        # Find the workspace matching the family password
+        workspaces = db.query(FamilyWorkspace).all()
+        matched_workspace = None
+        for ws in workspaces:
+            if ws.family_password_hash and vp(family_password, ws.family_password_hash):
+                matched_workspace = ws
+                break
+
+        if not matched_workspace:
+            raise ValueError("Incorrect family password. Ask your family admin for the correct password.")
+
+        # Assign role and family
+        user.role = role
+        user.family_id = matched_workspace.join_code
+        db.commit()
+
+        logger.info(f"User {email_lower} connected to family '{matched_workspace.family_name}' as {role}.")
+        return {
+            "username": user.username,
+            "email": user.email,
+            "role": role,
+            "family_id": matched_workspace.join_code,
+            "family_name": matched_workspace.family_name,
+            "join_code": matched_workspace.join_code
+        }
+    except ValueError:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error connecting to family: {e}")
+        raise
+    finally:
+        db.close()
+
+# ── Legacy Workspace Operations (kept for backward compatibility) ─────────────
+
+def create_workspace(family_name: str, house_address: str, admin_username: str, hashed_pw: str) -> dict:
+    """Legacy: Creates a new family workspace and registers creator as Parent admin."""
+    db: Session = SessionLocal()
+    try:
+        join_code = _generate_join_code()
+        while db.query(FamilyWorkspace).filter_by(join_code=join_code).first():
+            join_code = _generate_join_code()
+        workspace = FamilyWorkspace(join_code=join_code, family_name=family_name, house_address=house_address)
+        db.add(workspace)
+        user = WorkspaceUser(username=admin_username, hashed_password=hashed_pw, role="Parent", family_id=join_code)
+        db.add(user)
+        db.commit()
+        return {"join_code": join_code, "family_name": family_name, "username": admin_username, "role": "Parent", "family_id": join_code}
+    except Exception as e:
+        db.rollback(); raise
+    finally:
+        db.close()
+
+def join_workspace(join_code: str, username: str, hashed_pw: str, role: str) -> dict:
+    """Legacy: Joins existing workspace via join code."""
+    db: Session = SessionLocal()
+    try:
+        workspace = db.query(FamilyWorkspace).filter_by(join_code=join_code.upper()).first()
+        if not workspace:
+            raise ValueError(f"No workspace found with join code '{join_code}'.")
+        existing = db.query(WorkspaceUser).filter_by(username=username).first()
+        if existing:
+            raise ValueError(f"Username '{username}' is already registered.")
+        user = WorkspaceUser(username=username, hashed_password=hashed_pw, role=role, family_id=join_code.upper())
+        db.add(user)
+        db.commit()
+        return {"join_code": join_code.upper(), "family_name": workspace.family_name, "username": username, "role": role, "family_id": join_code.upper()}
+    except ValueError:
+        raise
+    except Exception as e:
+        db.rollback(); raise
+    finally:
+        db.close()
+
 def register_user(username: str, hashed_pw: str, role: str, family_id: str) -> dict:
-    """Backward compatible registration that saves directly to PostgreSQL."""
+    """Legacy: Saves a user directly to PostgreSQL with known role and family_id."""
     db: Session = SessionLocal()
     try:
         existing = db.query(WorkspaceUser).filter_by(username=username).first()
         if existing:
             raise ValueError(f"Username '{username}' is already registered.")
-
-        user = WorkspaceUser(
-            username=username,
-            hashed_password=hashed_pw,
-            role=role,
-            family_id=family_id
-        )
+        user = WorkspaceUser(username=username, hashed_password=hashed_pw, role=role, family_id=family_id)
         db.add(user)
         db.commit()
         return {"username": username, "role": role, "family_id": family_id}
     except ValueError:
         raise
     except Exception as e:
-        db.rollback()
-        raise
+        db.rollback(); raise
     finally:
         db.close()
 
 def get_user(identifier: str) -> Optional[dict]:
-    """Lookup by username OR email (case-insensitive) to support both login forms."""
+    """Lookup by username OR email (case-insensitive)."""
     db: Session = SessionLocal()
     try:
-        identifier_lower = identifier.lower()
-        # Try username first
-        user = db.query(WorkspaceUser).filter(
-            WorkspaceUser.username == identifier_lower
-        ).first()
-        # If not found, try stripping email domain (e.g. 'mother@family.com' → 'mother')
+        identifier_lower = identifier.lower().strip()
+        user = db.query(WorkspaceUser).filter(WorkspaceUser.username == identifier_lower).first()
         if not user and "@" in identifier_lower:
             username_part = identifier_lower.split("@")[0]
-            user = db.query(WorkspaceUser).filter(
-                WorkspaceUser.username == username_part
-            ).first()
-        # Also try email column match
+            user = db.query(WorkspaceUser).filter(WorkspaceUser.username == username_part).first()
         if not user:
-            user = db.query(WorkspaceUser).filter(
-                WorkspaceUser.email == identifier_lower
-            ).first()
+            user = db.query(WorkspaceUser).filter(WorkspaceUser.email == identifier_lower).first()
         if user:
             return {
                 "username": user.username,
+                "email": user.email,
                 "hashed_password": user.hashed_password,
                 "role": user.role,
                 "family_id": user.family_id

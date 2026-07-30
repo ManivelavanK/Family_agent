@@ -51,6 +51,7 @@ from app.api.ml import router as ml_router
 from app.api.report import router as report_router
 from app.api.cognitive import router as cognitive_router
 from app.api.notification import router as notification_router
+from app.api.grandparent_api import router as grandparent_api_router
 
 
 # ── Lifespan (replaces deprecated @app.on_event) ────────────────────────────
@@ -105,7 +106,7 @@ for router in [
     reminder_router, emergency_router, analytics_router,
     forecast_router, voice_router, rules_router, scheduler_api_router,
     communication_router, ml_router, report_router, cognitive_router,
-    notification_router,
+    notification_router, grandparent_api_router,
 ]:
     app.include_router(router)
 

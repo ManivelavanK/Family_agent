@@ -32,7 +32,7 @@ from backend.scheduler import scheduler, scheduler_worker
 from backend.scheduler.models import ScheduledTask
 
 # Import the Authentication and Workspace Manager components
-from backend.auth import get_current_user, require_roles, verify_context_scope, get_user, register_user, create_workspace, join_workspace
+from backend.auth import get_current_user, require_roles, verify_context_scope, get_user, register_user, register_basic_user, setup_family_workspace, connect_to_family, create_workspace, join_workspace
 from backend.auth.models import RegisterRequest, LoginRequest, TokenResponse, UserClaims, CreateWorkspaceRequest, JoinWorkspaceRequest, WorkspaceResponse
 from backend.auth.jwt import create_access_token, verify_password, hash_password, decode_access_token
 
@@ -101,6 +101,14 @@ father_mock_app = FastAPI(
     version="1.0.0"
 )
 
+father_mock_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 class AgentMessageType(str):
     REQUEST_APPROVAL = "REQUEST_APPROVAL"
     RESPONSE_APPROVAL = "RESPONSE_APPROVAL"
@@ -119,6 +127,42 @@ class InterAgentMessage(BaseModel):
     context: Dict[str, Any] = Field(default_factory=dict)
     timestamp: str = Field(default_factory=lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
 
+# In-memory database for mock Father Agent
+FATHER_STATE = {
+    "metrics": {
+        "monthlyBudget": 80000.0,
+        "weeklyBudget": 18000.0,
+        "currentSpending": 34500.0,
+        "remainingBalance": 45500.0
+    },
+    "ledger": {
+        "income": [
+            {"id": 1, "source": "Primary Salary (Father)", "amount": 120000.0, "date": "2026-07-01", "frequency": "Monthly"},
+            {"id": 2, "source": "Freelance Design consulting", "amount": 25000.0, "date": "2026-07-15", "frequency": "Ad-hoc"}
+        ],
+        "transactions": [
+            {"id": 1, "description": "Grocery Supermarket Run", "category": "Shopping & Groceries", "amount": 4500.0, "date": "2026-07-28", "type": "DEBIT"},
+            {"id": 2, "description": "Electric Autopay", "category": "Utilities & Subscriptions", "amount": 3200.0, "date": "2026-07-26", "type": "DEBIT"},
+            {"id": 3, "description": "Vanguard Mutual Fund", "category": "Savings & Investment", "amount": 10000.0, "date": "2026-07-25", "type": "DEBIT"},
+            {"id": 4, "description": "Tuition Fees Payment", "category": "Education & Child Care", "amount": 6800.0, "date": "2026-07-20", "type": "DEBIT"}
+        ]
+    },
+    "goals": [
+        {"id": 1, "name": "Emergency Fund", "target": 200000.0, "current": 140000.0, "category": "Safety"},
+        {"id": 2, "name": "New Family SUV", "target": 1500000.0, "current": 450000.0, "category": "Vehicle"},
+        {"id": 3, "name": "Kids College Fund", "target": 5000000.0, "current": 1200000.0, "category": "Education"}
+    ],
+    "bills": [
+        {"id": 1, "name": "Monthly House Rent", "amount": 35000.0, "dueDate": "2026-08-01", "status": "PENDING"},
+        {"id": 2, "name": "Broadband Internet", "amount": 1500.0, "dueDate": "2026-08-05", "status": "PENDING"},
+        {"id": 3, "name": "Netflix & Spotify Bundle", "amount": 800.0, "dueDate": "2026-08-10", "status": "PAID"}
+    ],
+    "requests": [
+        {"id": "REQ-1", "itemName": "PlayStation 5 Console", "amount": 49999.0, "requestedBy": "Child", "status": "PENDING", "date": "2026-07-29"},
+        {"id": "REQ-2", "itemName": "High-speed Blender", "amount": 5500.0, "requestedBy": "Mother", "status": "APPROVED", "date": "2026-07-28"}
+    ]
+}
+
 @father_mock_app.post("/api/v1/agent-bus/message")
 def handle_mock_father_message(msg: InterAgentMessage):
     logger.info(f"[Mock Father] Received message {msg.message_id} from {msg.sender_agent} (Type: {msg.message_type})")
@@ -131,8 +175,8 @@ def handle_mock_father_message(msg: InterAgentMessage):
             "data": {
                 "status": "active",
                 "domain": "finance_decisions",
-                "safe_to_spend_balance": 15000.0,
-                "pending_approvals": 0
+                "safe_to_spend_balance": FATHER_STATE["metrics"]["remainingBalance"],
+                "pending_approvals": len([r for r in FATHER_STATE["requests"] if r["status"] == "PENDING"])
             }
         }
     elif msg.message_type == AgentMessageType.REQUEST_APPROVAL:
@@ -153,6 +197,89 @@ def handle_mock_father_message(msg: InterAgentMessage):
             "data": {"acknowledged": True, "notes": "Processed by Father Agent digital twin."}
         }
 
+@father_mock_app.get("/api/father/metrics")
+def get_father_metrics():
+    return FATHER_STATE["metrics"]
+
+@father_mock_app.post("/api/father/metrics")
+def update_father_metrics(data: Dict[str, Any]):
+    if "monthlyBudget" in data:
+        FATHER_STATE["metrics"]["monthlyBudget"] = float(data["monthlyBudget"])
+    if "weeklyBudget" in data:
+        FATHER_STATE["metrics"]["weeklyBudget"] = float(data["weeklyBudget"])
+    FATHER_STATE["metrics"]["remainingBalance"] = max(0.0, FATHER_STATE["metrics"]["monthlyBudget"] - FATHER_STATE["metrics"]["currentSpending"])
+    return FATHER_STATE["metrics"]
+
+@father_mock_app.get("/api/father/ledger")
+def get_father_ledger():
+    return FATHER_STATE["ledger"]
+
+@father_mock_app.get("/api/father/goals")
+def get_father_goals():
+    return FATHER_STATE["goals"]
+
+@father_mock_app.get("/api/father/bills")
+def get_father_bills():
+    return FATHER_STATE["bills"]
+
+@father_mock_app.get("/api/father/requests")
+def get_father_requests():
+    return FATHER_STATE["requests"]
+
+@father_mock_app.post("/api/father/requests")
+def create_father_request(data: Dict[str, Any]):
+    new_req = {
+        "id": "REQ-" + str(int(time.time()))[-6:],
+        "itemName": data.get("itemName", "Unnamed item"),
+        "amount": float(data.get("amount", 0)),
+        "requestedBy": data.get("requestedBy", "Family Member"),
+        "status": "PENDING",
+        "date": time.strftime("%Y-%m-%d")
+    }
+    FATHER_STATE["requests"].insert(0, new_req)
+    return new_req
+
+@father_mock_app.patch("/api/father/requests/{req_id}")
+def update_father_request(req_id: str, data: Dict[str, Any]):
+    status_val = data.get("status")
+    for req in FATHER_STATE["requests"]:
+        if req["id"] == req_id:
+            req["status"] = status_val
+            if status_val == "APPROVED":
+                FATHER_STATE["metrics"]["currentSpending"] += req["amount"]
+                FATHER_STATE["metrics"]["remainingBalance"] = max(0.0, FATHER_STATE["metrics"]["monthlyBudget"] - FATHER_STATE["metrics"]["currentSpending"])
+                new_tx = {
+                    "id": len(FATHER_STATE["ledger"]["transactions"]) + 1,
+                    "description": f"Approved: {req['itemName']}",
+                    "category": "Shopping & Groceries",
+                    "amount": req["amount"],
+                    "date": time.strftime("%Y-%m-%d"),
+                    "type": "DEBIT"
+                }
+                FATHER_STATE["ledger"]["transactions"].insert(0, new_tx)
+            return {"success": True, "request": req}
+    return JSONResponse(status_code=404, content={"success": False, "message": "Request not found"})
+
+@father_mock_app.post("/api/father/consult")
+def consult_father(data: Dict[str, Any]):
+    query = data.get("query", "").lower()
+    balance = FATHER_STATE["metrics"]["remainingBalance"]
+    monthly = FATHER_STATE["metrics"]["monthlyBudget"]
+    spent = FATHER_STATE["metrics"]["currentSpending"]
+    
+    if "budget" in query or "spend" in query or "limit" in query:
+        answer = f"Our current monthly budget limit is ₹{monthly:,.2f}. We have spent ₹{spent:,.2f} so far, leaving a safe-to-spend balance of ₹{balance:,.2f}."
+    elif "status" in query or "how are we" in query:
+        status_str = "healthy" if balance > (monthly * 0.2) else "tight"
+        answer = f"Our financial status is currently {status_str}. We have ₹{balance:,.2f} remaining out of ₹{monthly:,.2f}."
+    elif "save" in query or "savings" in query:
+        total_saved = sum(g["current"] for g in FATHER_STATE["goals"])
+        answer = f"We have active savings goals (Emergency Fund, SUV, College Fund) with a total of ₹{total_saved:,.2f} accumulated."
+    else:
+        answer = "I've reviewed the family accounts. All automated bills are scheduled, and the overall budget is within safe thresholds. Let me know if you need to check specific transaction logs or verify an upcoming purchase request."
+        
+    return {"answer": answer}
+
 @father_mock_app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 def catch_all_father_mock(path: str, request: Request):
     """Fallback handler for any CRUD queries to the mock father agent."""
@@ -164,6 +291,7 @@ def catch_all_father_mock(path: str, request: Request):
             "data": {}
         }
     )
+
 
 # ── App factory and Lifespan ────────────────────────────────────────────────
 @asynccontextmanager
@@ -227,77 +355,121 @@ app.add_middleware(
 
 # ── Authentication & Registration Endpoints ─────────────────────────────────
 
+class EmailRegisterRequest(BaseModel):
+    email: str = Field(..., description="Email address used as login identifier.")
+    password: str = Field(..., min_length=6)
+
+class FamilySetupRequest(BaseModel):
+    email: str
+    role: str = Field(..., description="Creator's role: Parent, Grandparent, etc.")
+    family_name: str
+    house_address: str
+    member_count: str = "4"
+    children_ages: str = ""
+    special_needs: str = ""
+    family_password: str = Field(..., min_length=4, description="Shared family password others use to connect.")
+
+class FamilyConnectRequest(BaseModel):
+    email: str
+    role: str = Field(..., description="Role this member will take: Child, Grandparent, etc.")
+    family_password: str = Field(..., description="Shared family password set by the family admin.")
+
+class FamilySetupResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    family_id: str
+    family_name: str
+    join_code: str
+    role: str
+    username: str
+
 @app.post("/orchestrator/auth/register", response_model=TokenResponse, tags=["Family Workspace Auth"])
-def register_workspace_user(req: RegisterRequest):
-    """Backward-compatible registration: binds a user to a family partition workspace and returns a JWT token."""
-    existing = get_user(req.username)
+def register_email_user(req: EmailRegisterRequest):
+    """NEW: Register with just email + password. No role assigned yet — user will pick role on the Role Selection screen."""
+    existing = get_user(req.email)
     if existing:
-        raise HTTPException(status_code=400, detail="Username already registered.")
+        raise HTTPException(status_code=400, detail="An account with this email already exists.")
     try:
         hashed = hash_password(req.password)
-        user = register_user(req.username, hashed, req.role, req.family_id)
-        token = create_access_token({"sub": user["username"], "role": user["role"], "family_id": user["family_id"]})
-        return {"access_token": token, "token_type": "bearer", "family_id": user["family_id"], "role": user["role"], "username": user["username"]}
+        user = register_basic_user(req.email, hashed)
+        token = create_access_token({"sub": user["username"], "role": user["role"], "family_id": user["family_id"] or ""})
+        return {"access_token": token, "token_type": "bearer", "family_id": user["family_id"] or "", "role": user["role"], "username": user["username"]}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/orchestrator/auth/login", response_model=TokenResponse, tags=["Family Workspace Auth"])
 def login_workspace_user(req: LoginRequest):
-    """Authenticates credentials (username OR email) and returns a JWT access token with family claims."""
+    """Authenticates credentials (email or legacy username) and returns a JWT access token."""
     user = get_user(req.username)
     if not user or not verify_password(req.password, user["hashed_password"]):
-        raise HTTPException(status_code=401, detail="Invalid username or password.")
-    token = create_access_token({"sub": user["username"], "role": user["role"], "family_id": user["family_id"]})
-    return {"access_token": token, "token_type": "bearer", "family_id": user["family_id"], "role": user["role"], "username": user["username"]}
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+    token = create_access_token({"sub": user["username"], "role": user["role"], "family_id": user["family_id"] or ""})
+    return {"access_token": token, "token_type": "bearer", "family_id": user["family_id"] or "", "role": user["role"], "username": user["username"]}
+
+@app.post("/orchestrator/auth/family/setup", response_model=FamilySetupResponse, tags=["Family Workspace Auth"])
+def setup_family(req: FamilySetupRequest):
+    """NEW: Creator sets up a family workspace after registering. Assigns role and sets the shared family password."""
+    try:
+        hashed_family_pw = hash_password(req.family_password)
+        result = setup_family_workspace(
+            creator_email=req.email,
+            role=req.role,
+            family_name=req.family_name,
+            house_address=req.house_address,
+            member_count=req.member_count,
+            children_ages=req.children_ages,
+            special_needs=req.special_needs,
+            family_password_hash=hashed_family_pw
+        )
+        token = create_access_token({"sub": result["username"], "role": result["role"], "family_id": result["family_id"]})
+        return {
+            "access_token": token, "token_type": "bearer",
+            "family_id": result["family_id"], "family_name": result["family_name"],
+            "join_code": result["join_code"], "role": result["role"], "username": result["username"]
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/orchestrator/auth/family/connect", response_model=FamilySetupResponse, tags=["Family Workspace Auth"])
+def connect_family(req: FamilyConnectRequest):
+    """NEW: Member connects to an existing family workspace using the shared family password and their chosen role."""
+    try:
+        result = connect_to_family(
+            email=req.email,
+            role=req.role,
+            family_password=req.family_password
+        )
+        token = create_access_token({"sub": result["username"], "role": result["role"], "family_id": result["family_id"]})
+        return {
+            "access_token": token, "token_type": "bearer",
+            "family_id": result["family_id"], "family_name": result["family_name"],
+            "join_code": result["join_code"], "role": result["role"], "username": result["username"]
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/orchestrator/auth/workspace/create", response_model=WorkspaceResponse, tags=["Family Workspace Auth"])
 def create_family_workspace(req: CreateWorkspaceRequest):
-    """Creates a new family workspace with a unique join code and registers the creator as a Parent admin."""
+    """Legacy: Creates a new family workspace (kept for backward compatibility)."""
     existing = get_user(req.admin_username)
     if existing:
         raise HTTPException(status_code=400, detail=f"Username '{req.admin_username}' is already taken.")
     try:
         hashed = hash_password(req.admin_password)
-        result = create_workspace(
-            family_name=req.family_name,
-            house_address=req.house_address,
-            admin_username=req.admin_username,
-            hashed_pw=hashed
-        )
+        result = create_workspace(family_name=req.family_name, house_address=req.house_address, admin_username=req.admin_username, hashed_pw=hashed)
         token = create_access_token({"sub": result["username"], "role": result["role"], "family_id": result["family_id"]})
-        return {
-            "access_token": token,
-            "token_type": "bearer",
-            "family_id": result["family_id"],
-            "family_name": result["family_name"],
-            "join_code": result["join_code"],
-            "role": result["role"],
-            "username": result["username"]
-        }
+        return {"access_token": token, "token_type": "bearer", "family_id": result["family_id"], "family_name": result["family_name"], "join_code": result["join_code"], "role": result["role"], "username": result["username"]}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/orchestrator/auth/workspace/join", response_model=WorkspaceResponse, tags=["Family Workspace Auth"])
 def join_family_workspace(req: JoinWorkspaceRequest):
-    """Joins an existing family workspace using the join code, registering as a new member with specified role."""
+    """Legacy: Joins an existing family workspace via join code (kept for backward compatibility)."""
     try:
         hashed = hash_password(req.password)
-        result = join_workspace(
-            join_code=req.join_code,
-            username=req.username,
-            hashed_pw=hashed,
-            role=req.role
-        )
+        result = join_workspace(join_code=req.join_code, username=req.username, hashed_pw=hashed, role=req.role)
         token = create_access_token({"sub": result["username"], "role": result["role"], "family_id": result["family_id"]})
-        return {
-            "access_token": token,
-            "token_type": "bearer",
-            "family_id": result["family_id"],
-            "family_name": result["family_name"],
-            "join_code": result["join_code"],
-            "role": result["role"],
-            "username": result["username"]
-        }
+        return {"access_token": token, "token_type": "bearer", "family_id": result["family_id"], "family_name": result["family_name"], "join_code": result["join_code"], "role": result["role"], "username": result["username"]}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
