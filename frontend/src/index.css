@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+  --font-serif: "Playfair Display", serif;
+  
+  /* Primary Agent Colors for Accents */
+  --color-agent-father: #3b82f6;
+  --color-agent-mother: #ec4899;
+  --color-agent-children: #f59e0b;
+  --color-agent-grandparent: #10b981;
+  --color-agent-baby: #8b5cf6;
+  --color-agent-planner: #6366f1;
+
+  /* Theme Colors */
+  --color-hearth-cream: #FAF8F5;
+  --color-hearth-amber: #FEF3C7;
+  --color-hearth-sage: #DCFCE7;
+  --color-hearth-slate: #1E293B;
+}
+
+body {
+  @apply bg-hearth-cream text-hearth-slate overflow-x-hidden;
+  font-family: var(--font-sans);
+}
+
+/* Light Glassmorphism + Soft Claymorphism Utility */
+.glass-panel-light {
+  @apply bg-white/70 backdrop-blur-xl border border-amber-100/50 shadow-xl shadow-amber-900/5 rounded-3xl relative overflow-hidden transition-all duration-300;
+}
+
+/* Glowing text */
+.text-glow-warm {
+  text-shadow: 0 0 40px rgba(254, 243, 199, 0.8), 0 0 20px rgba(220, 252, 231, 0.5);
+}
+
+.text-glow-gold {
+  text-shadow: 0 0 30px rgba(251, 191, 36, 0.6), 0 0 15px rgba(217, 119, 6, 0.4);
+}
+
+/* Custom Scrollbar for hidden overflows */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent; 
+}
