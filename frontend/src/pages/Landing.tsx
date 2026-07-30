@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserCircle, Users, Baby, Calendar, CheckCircle2, ShieldAlert, ChevronRight, Image as ImageIcon } from 'lucide-react';
 
-interface KinshipHandTransitionProps {
+interface KinshipTransitionProps {
   isNavigating: boolean;
   onComplete?: () => void;
 }
 
-export const KinshipHandTransitionOverlay: React.FC<KinshipHandTransitionProps> = ({
+export const KinshipHandTransitionOverlay: React.FC<KinshipTransitionProps> = ({
   isNavigating,
   onComplete,
 }) => {
@@ -19,46 +19,56 @@ export const KinshipHandTransitionOverlay: React.FC<KinshipHandTransitionProps> 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.4 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-amber-950/60 backdrop-blur-3xl overflow-hidden pointer-events-none"
+          transition={{ duration: 0.3 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-amber-950/80 backdrop-blur-3xl overflow-hidden pointer-events-none"
         >
-          {/* Ambient Background Warmth */}
-          <div className="absolute w-[600px] h-[600px] rounded-full bg-amber-500/15 blur-[120px] animate-pulse" />
+          {/* Ambient Warm Backlight */}
+          <div className="absolute w-[600px] h-[600px] rounded-full bg-amber-500/20 blur-[130px] animate-pulse" />
 
-          <div className="relative w-full max-w-2xl aspect-square flex items-center justify-center">
+          <div className="relative w-96 h-96 flex items-center justify-center">
             
-            {/* 1. TOP-LEFT & BOTTOM-RIGHT GOLDEN HANDS (Sliding into clasp) */}
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center"
-              initial={{ scale: 1.3, opacity: 0, y: -40 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            {/* LEFT HAND - Golden Light Silhouette */}
+            <motion.svg
+              className="absolute w-64 h-64 text-amber-300 drop-shadow-[0_0_30px_rgba(251,191,36,0.9)]"
+              viewBox="0 0 200 200"
+              fill="currentColor"
+              initial={{ x: -180, y: 120, opacity: 0, rotate: -25 }}
+              animate={{ x: -30, y: 10, opacity: 1, rotate: -10 }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             >
-              {/* Central Glowing Joined Hands Emblem */}
-              <div className="relative w-96 h-96">
-                <img
-                  src="/assets/golden-hands-joined.png" 
-                  alt="Kinship Hands Joining"
-                  className="w-full h-full object-contain drop-shadow-[0_0_35px_rgba(251,191,36,0.7)]"
-                />
-              </div>
-            </motion.div>
+              {/* Hand, Wrist, and Reaching Fingers */}
+              <path d="M 10,190 C 30,160 50,140 80,120 C 95,110 110,95 125,80 C 135,70 145,65 155,70 C 165,75 160,90 148,100 C 135,110 120,120 105,128 C 120,115 140,100 155,102 C 168,104 165,118 152,128 C 138,138 120,142 105,145 C 120,138 138,130 148,136 C 158,142 152,154 138,160 C 122,166 100,165 85,160 C 60,152 35,170 10,190 Z" />
+            </motion.svg>
 
-            {/* 2. BURST OF HEARTH LIGHT ON CONNECTION */}
+            {/* RIGHT HAND - Sage/Jade Light Silhouette */}
+            <motion.svg
+              className="absolute w-64 h-64 text-emerald-300 drop-shadow-[0_0_30px_rgba(110,231,183,0.9)]"
+              viewBox="0 0 200 200"
+              fill="currentColor"
+              initial={{ x: 180, y: -120, opacity: 0, rotate: 155 }}
+              animate={{ x: 30, y: -10, opacity: 1, rotate: 170 }}
+              transition={{ duration: 0.8, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {/* Hand, Wrist, and Reaching Fingers */}
+              <path d="M 10,190 C 30,160 50,140 80,120 C 95,110 110,95 125,80 C 135,70 145,65 155,70 C 165,75 160,90 148,100 C 135,110 120,120 105,128 C 120,115 140,100 155,102 C 168,104 165,118 152,128 C 138,138 120,142 105,145 C 120,138 138,130 148,136 C 158,142 152,154 138,160 C 122,166 100,165 85,160 C 60,152 35,170 10,190 Z" />
+            </motion.svg>
+
+            {/* GOLDEN HEARTH BURST AT POINT OF CONTACT */}
             <motion.div
-              className="absolute w-48 h-48 rounded-full bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-100 blur-2xl"
-              initial={{ scale: 0.2, opacity: 0 }}
-              animate={{ scale: [0.2, 2.2, 3], opacity: [0, 0.9, 0] }}
+              className="absolute w-32 h-32 rounded-full bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-100 blur-xl"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: [0, 2.2, 3], opacity: [0, 1, 0] }}
               transition={{ duration: 0.8, delay: 0.7, ease: "easeOut" }}
             />
 
-            {/* 3. CONCENTRIC KINSHIP RIPPLES */}
+            {/* EXPANDING KINSHIP RIPPLE WAVE */}
             <motion.div
-              className="absolute w-80 h-80 rounded-full border border-amber-400/50"
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1.8, opacity: [0, 0.6, 0] }}
-              transition={{ duration: 1, delay: 0.6, ease: "easeOut" }}
+              className="absolute w-80 h-80 rounded-full border border-amber-300/50 shadow-[0_0_30px_rgba(251,191,36,0.5)]"
+              initial={{ scale: 0.3, opacity: 0 }}
+              animate={{ scale: [0.3, 1.5], opacity: [0, 0.8, 0] }}
+              transition={{ duration: 0.9, delay: 0.65, ease: "easeOut" }}
             />
+
           </div>
         </motion.div>
       )}
@@ -260,7 +270,10 @@ export default function Landing() {
 
   return (
     <div ref={containerRef} className="min-h-screen relative flex flex-col items-center justify-start pb-32">
-      <KinshipHandTransitionOverlay isNavigating={isNavigating} />
+      <KinshipHandTransitionOverlay 
+        isNavigating={isNavigating} 
+        onComplete={() => console.log("Transition complete")} 
+      />
 
       {/* Hero Section - Perfectly Centered Full Viewport Height block */}
       <div className="relative z-20 flex flex-col items-center justify-center min-h-[90vh] text-center px-6 max-w-5xl mx-auto w-full">
