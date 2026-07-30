@@ -1,10 +1,38 @@
+import { useState, useEffect } from 'react';
 import { Users, CheckCircle, Bell, Calendar, UserCircle, Baby } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuthStore } from '../store/useAuthStore';
 
 export default function Dashboard() {
+  const token = useAuthStore(state => state.token);
+  const [profileData, setProfileData] = useState<any>(null);
+  const [budgetData, setBudgetData] = useState<any>(null);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchDashboardContext = async () => {
+      try {
+        const [profileRes, budgetRes] = await Promise.all([
+          fetch('http://localhost:8000/orchestrator/context/profile', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('http://localhost:8000/orchestrator/context/budget', { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        if (profileRes.ok) setProfileData(await profileRes.json());
+        if (budgetRes.ok) setBudgetData(await budgetRes.json());
+      } catch (err: any) {
+        setErrorMsg(err.message);
+      }
+    };
+    fetchDashboardContext();
+  }, [token]);
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900">Family Overview</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-slate-900">Family Overview</h1>
+        {errorMsg && <p className="text-red-500 text-sm bg-red-50/80 px-3 py-1 rounded-md">{errorMsg}</p>}
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex items-center">
@@ -44,6 +72,23 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {(profileData || budgetData) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          {profileData && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <h3 className="font-bold text-slate-900 mb-2">Profile Context</h3>
+              <pre className="text-xs text-slate-600 overflow-auto bg-slate-50 p-2 rounded">{JSON.stringify(profileData, null, 2)}</pre>
+            </div>
+          )}
+          {budgetData && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <h3 className="font-bold text-slate-900 mb-2">Budget Context</h3>
+              <pre className="text-xs text-slate-600 overflow-auto bg-slate-50 p-2 rounded">{JSON.stringify(budgetData, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      )}
 
       <h2 className="text-xl font-bold text-slate-900 mt-8">Active Agents</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

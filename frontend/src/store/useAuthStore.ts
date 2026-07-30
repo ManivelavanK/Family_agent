@@ -1,17 +1,27 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface AuthState {
   isAuthenticated: boolean;
   user: any | null;
   familyId: string | null;
-  login: (userData: any, familyId: string) => void;
+  token: string | null;
+  login: (userData: any, familyId: string, token: string) => void;
   logout: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  isAuthenticated: false,
-  user: null,
-  familyId: null,
-  login: (user, familyId) => set({ isAuthenticated: true, user, familyId }),
-  logout: () => set({ isAuthenticated: false, user: null, familyId: null }),
-}));
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      isAuthenticated: false,
+      user: null,
+      familyId: null,
+      token: null,
+      login: (user, familyId, token) => set({ isAuthenticated: true, user, familyId, token }),
+      logout: () => set({ isAuthenticated: false, user: null, familyId: null, token: null }),
+    }),
+    {
+      name: 'kinnest-auth-storage', // unique name
+    }
+  )
+);
